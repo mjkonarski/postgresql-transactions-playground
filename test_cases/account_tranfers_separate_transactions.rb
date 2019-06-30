@@ -40,9 +40,15 @@ SQL
             to_account = rand(1..NUMBER_OF_ACCOUNTS)
             amount = rand(1..100)
 
+            # two queries are not in the same transaction - that's wrong
+
+            # solution:
+            # pg_conn.exec('begin') 
+
             pg_conn.exec("update accounts set amount = amount - #{amount} where id = #{from_account}")
             pg_conn.exec("update accounts set amount = amount + #{amount} where id = #{to_account}")
 
+            # pg_conn.exec('commit')             
         end
 
         logger.info("TRANSFERING_WORKER ends")

@@ -59,7 +59,11 @@ SQL
         hashes_inequal = 0
 
         2000.times do 
+            # transaction is set to read committed - wrong
             pg_conn.exec('begin')
+
+            # solution is to set it to repeatable read 
+            # pg_conn.exec('begin isolation level repeatable read')
             res = pg_conn.exec("select id, amount from accounts;")
             h1 = {}
             res.each do |row|
@@ -72,7 +76,6 @@ SQL
                 h2[row['id']] = row['amount']
             end
             pg_conn.exec('commit')
-
 
             if h1 == h2
                 hashes_equal += 1
