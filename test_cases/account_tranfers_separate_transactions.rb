@@ -7,7 +7,8 @@ WORKERS_NUM = 2
 NUMBER_OF_ACCOUNTS = 100
 INITIAL_AMOUNT = 1000
 
-class Sample < TestCase
+# 
+class AccountTranfersSeparateTransactions < TestCase
     def prepare
         sql = <<SQL
         DROP TABLE IF EXISTS accounts;
@@ -52,15 +53,24 @@ SQL
         expected_sum = INITIAL_AMOUNT * NUMBER_OF_ACCOUNTS
         logger.info("VALIDATING_WORKER: expected sum: #{expected_sum}")
 
+        correct_sums = 0
+        incorrect_sums = 0
+
         10000.times do 
             res = pg_conn.exec("select sum(amount) from accounts;")
             sum = res.getvalue(0, 0).to_i
 
-            logger.info("Incorrect sum: #{sum}") if sum != expected_sum
-            logger.info("Correct sum") if sum == expected_sum
+            if sum == expected_sum
+                correct_sums += 1
+            else
+                incorrect_sums += 1
+            end
         end
+
+        logger.info("Correct sums: #{correct_sums}")
+        logger.info("Incrrect sums: #{incorrect_sums}")
     end
 
 end
 
-Runner.new.run(test_case: Sample.new, workers_num: WORKERS_NUM)
+Runner.new.run(test_case: AccountTranfersSeparateTransactions.new, workers_num: WORKERS_NUM)
