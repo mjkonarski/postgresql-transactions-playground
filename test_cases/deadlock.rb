@@ -1,5 +1,6 @@
 require 'pg'
 require 'ap'
+require 'retryable'
 load 'test_case.rb'
 load 'runner.rb'
 
@@ -22,18 +23,24 @@ SQL
 
     def work(worker_num:)
         NUMBER_OF_INCREMENTS.times do            
-            pg_conn.exec("begin")
+            Retryable.retryable(tries: :infinite) do
+                pg_conn.exec("begin")
 
-            res = pg_conn.exec("select id, value from counters;")
-            h = {}
-            res.each do |row|
-                h[row['id']] = row['value']
-            end
+                res = pg_conn.exec("select id, value from counters;")
+                h = {}
+                res.each do |row|
+                    h[row['id']] = row['value']
+                end
 
-            h.each do |id, value|
-                pg_conn.exec("update counters set value = #{value.to_i + 1} where id = #{id}")
+                # Deadlock occurs because the counters are updated in a random order
+                # If they were updates in the same order deadlock would not happen
+                # h.sort.each...
+
+                h.sort.each do |id, value|
+                    pg_conn.exec("update counters set value = #{value.to_i + 1} where id = #{id}")
+                end
+                pg_conn.exec("commit")
             end
-            pg_conn.exec("commit")
         end
     end
 
