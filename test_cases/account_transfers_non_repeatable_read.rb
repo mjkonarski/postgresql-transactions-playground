@@ -8,7 +8,7 @@ NUMBER_OF_ACCOUNTS = 100
 INITIAL_AMOUNT = 1000
 
 # 
-class AccountTranfersNonRepeatableRead < TestCase
+class AccountTranfers < TestCase
     def prepare
         sql = <<SQL
         DROP TABLE IF EXISTS accounts;
@@ -23,9 +23,9 @@ SQL
 
     def work(worker_num:)
         case worker_num
-        when 1
+        when 0
             transfering_worker
-        when 2
+        when 1
             validating_worker
         end
     end
@@ -90,4 +90,4 @@ SQL
 
 end
 
-Runner.new.run(test_case: AccountTranfersNonRepeatableRead.new, workers_num: WORKERS_NUM)
+Runner.new.run(test_case: AccountTranfers.new, workers_num: WORKERS_NUM)
