@@ -29,18 +29,21 @@ SQL
     end
 
     def work(worker_num:)
-        loop do
-            exception_cb = proc do |exception|
-                logger.debug("#{worker_num}: #{exception}")
-                pg_conn.exec("rollback")
-            end
+        exception_cb = proc do |exception|
+            logger.debug("#{worker_num}: #{exception}")
+            pg_conn.exec("rollback")
+        end
 
-            Retryable.retryable(tries: :infinite, exception_cb: exception_cb) do |retry_num|
+        Retryable.retryable(tries: :infinite, exception_cb: exception_cb) do |retry_num|
+            loop do
+
                 pg_conn.exec("begin transaction isolation level serializable")
                 res = pg_conn.exec("select id, start_time, end_time from rooms "\
                     "where start_time >= '#{db_timestamp(MIN_TIMESTAMP)}' and end_time <= '#{db_timestamp(MAX_TIMESTAMP)}' "\
                     "and id = #{ROOM_NUMBER} order by start_time")
             
+                # logger.debug("#{worker_num}: rows selected")
+
                 left = MIN_TIMESTAMP    
 
                 empty_ranges = []
@@ -71,8 +74,12 @@ SQL
                 new_start_time = start_time + new_range_offset * 3600
                 new_end_time = new_start_time + new_range_hours * 3600
                 
+                # logger.debug("#{worker_num}: about to insert")
+
                 res = pg_conn.exec("insert into rooms(id, start_time, end_time) "\
                     "values(#{ROOM_NUMBER}, '#{db_timestamp(new_start_time)}', '#{db_timestamp(new_end_time)}')")
+                # logger.debug("#{worker_num}: about to commit")
+
                 pg_conn.exec("commit")
             end
             logger.debug("#{worker_num} committed")
@@ -96,8 +103,6 @@ SQL
             left = end_time
             rooms << [start_time, end_time]
         end
-
-        ap rooms
         logger.info("The result is: #{correct}")
     end
 
